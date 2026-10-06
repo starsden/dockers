@@ -7,5 +7,8 @@ PORT="${WEB_PORT:-80}"
 # Подставляем порт в конфигурацию nginx
 sed -i "s/__WEB_PORT__/${PORT}/g" /etc/nginx/nginx.conf
 
+echo "[WEB TEMPLATE] Тестирование конфигурации..."
+/usr/sbin/nginx -t
+
 echo "[WEB TEMPLATE] Запуск Nginx на порту ${PORT}..."
-exec /usr/sbin/nginx -c /etc/nginx/nginx.conf
+exec /usr/sbin/nginx

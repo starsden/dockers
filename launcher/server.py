@@ -51,17 +51,24 @@ ALLOCATED_BASE_PORTS = set()
 
 
 def ensure_docker_network():
-    """Создает внутреннюю сеть Docker без доступа в интернет, если она отсутствует."""
+    """Создает изолированную сеть Docker без блокировки проброса портов."""
     try:
         check = subprocess.run(
             ["docker", "network", "inspect", DOCKER_NETWORK],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
         )
-        if check.returncode != 0:
-            print(f"[LAUNCHER] Создание изолированной сети {DOCKER_NETWORK} (--internal)...")
+        if check.returncode == 0:
+            # Если сеть была ошибочно создана с флагом --internal (он полностью блокирует проброс портов -p),
+            # удаляем ее и создаем заново без --internal
+            if '"Internal": true' in check.stdout:
+                print(f"[LAUNCHER] Сеть {DOCKER_NETWORK} была создана с флагом --internal (он блокирует проброс портов). Пересоздаем...")
+                subprocess.run(["docker", "network", "rm", DOCKER_NETWORK], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["docker", "network", "create", DOCKER_NETWORK], check=True)
+        else:
+            print(f"[LAUNCHER] Создание сети {DOCKER_NETWORK}...")
             subprocess.run(
-                ["docker", "network", "create", "--internal", DOCKER_NETWORK],
+                ["docker", "network", "create", DOCKER_NETWORK],
                 check=True,
             )
     except Exception as e:
@@ -512,14 +519,15 @@ class CTFRequestHandler(http.server.SimpleHTTPRequestHandler):
                 secondsRemaining = data.remaining_seconds || 0;
                 startTimerCountdown();
 
+                const targetHost = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? window.location.hostname : data.host;
                 if (data.mode === "scan") {{
                     connInfo.innerHTML = `
-                        <div>🌐 <b>Целевой хост:</b> <span class="code">${{data.host}}</span></div>
+                        <div>🌐 <b>Целевой хост:</b> <span class="code">${{targetHost}}</span></div>
                         <div style="margin-top: 8px;">🔍 <b>Диапазон для сканирования:</b> <span class="code">порты ${{data.port_range}}</span></div>
-                        <div style="margin-top: 8px; font-size: 13px; color: #9ca3af;">Пример: <code>nmap -p ${{data.port_range}} ${{data.host}}</code></div>
+                        <div style="margin-top: 8px; font-size: 13px; color: #9ca3af;">Пример: <code>nmap -p ${{data.port_range}} ${{targetHost}}</code></div>
                     `;
                 }} else {{
-                    const url = "http://" + data.host + ":" + data.service_port;
+                    const url = "http://" + targetHost + ":" + data.service_port;
                     connInfo.innerHTML = `
                         <div>🌐 <b>Адрес сервиса:</b> <a href="${{url}}" target="_blank" class="code" style="text-decoration: underline;">${{url}}</a></div>
                     `;
