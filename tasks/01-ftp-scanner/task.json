@@ -1,0 +1,16 @@
+{
+  "id": "ftp-scanner",
+  "title": "Задание 1: Сканирование и поиск архива (FTP)",
+  "description": "На выделенном для вас диапазоне портов запущен сервис обмена файлами. Просканируйте порты, подключитесь к найденной службе и заберите секретный флаг.",
+  "template": "ftp",
+  "mode": "scan",
+  "port_range_size": 10,
+  "service_offset": 3,
+  "service_port": 21,
+  "pasv_offset": 4,
+  "pasv_port": 21000,
+  "mount_path": "/var/ftp/pub",
+  "env": {
+    "FTP_ANON_ENABLE": "YES"
+  }
+}
